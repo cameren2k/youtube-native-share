@@ -51,6 +51,10 @@
 + (GPBExtensionDescriptor*)innertubeCommand;
 @end
 
+@interface YTAccountScopedCommandResponderEvent
+@property (nonatomic, strong, readwrite) YTICommand *command;
+@end
+
 @interface YTIShareEntityEndpoint
 @property (nonatomic, assign, readwrite) BOOL hasSerializedShareEntity;
 @property (nonatomic, copy, readwrite) NSString *serializedShareEntity;
@@ -82,7 +86,7 @@ static BOOL showNativeShareSheet(NSString *serializedShareEntity) {
     if ([fields hasField:ShareEntityFieldClip]) {
         GPBUnknownField *shareEntityClip = [fields getField:ShareEntityFieldClip];
         if ([shareEntityClip.lengthDelimitedList count] != 1)
-            return FALSE;
+            return NO;
         GPBMessage *clipMessage = [%c(GPBMessage) parseFromData:[shareEntityClip.lengthDelimitedList firstObject] error:nil];
         shareUrl = extractIdWithFormat(clipMessage.unknownFields, 1, @"https://youtube.com/clip/%@");
     }
@@ -103,34 +107,34 @@ static BOOL showNativeShareSheet(NSString *serializedShareEntity) {
         shareUrl = extractIdWithFormat(fields, ShareEntityFieldVideo, @"https://youtube.com/watch?v=%@");
 
     if (!shareUrl)
-        return FALSE;
+        return NO;
 
-    UIActivityViewController *activityViewController = [[UIActivityViewController alloc]initWithActivityItems:@[shareUrl] applicationActivities:nil];
-    [[%c(YTUIUtils) topViewControllerForPresenting] presentViewController:activityViewController animated:YES completion:^{}];
-    return TRUE;
+    UIActivityViewController *activityViewController = [[UIActivityViewController alloc] initWithActivityItems:@[shareUrl] applicationActivities:nil];
+    activityViewController.excludedActivityTypes = @[UIActivityTypeAssignToContact, UIActivityTypePrint];
+
+    UIViewController *topViewController = [%c(YTUIUtils) topViewControllerForPresenting];
+
+    if (activityViewController.popoverPresentationController) {
+        activityViewController.popoverPresentationController.sourceView = topViewController.view;
+    }
+
+    [topViewController presentViewController:activityViewController animated:YES completion:nil];
+
+    return YES;
 }
-
 
 /* -------------------- iPad Layout -------------------- */
 
-%hook YTShareRequestViewController
-- (id)initWithService:(id)_service parentResponder:(id)_parentResponder {
-    // disable the default share sheet behavior and force the app to call [YTAccountScopedCommandRouter handleCommand]
-    return NULL;
-}
-%end
-
-%hook YTAccountScopedCommandRouter
-- (BOOL)handleCommand:(id)command entry:(id)_entry fromView:(id)_fromView sender:(id)_sender completionBlock:(id)_completionBlock {
+%hook YTAccountScopedCommandResponderEvent
+- (void)send {
     GPBExtensionDescriptor *shareEntityEndpointDescriptor = [%c(YTIShareEntityEndpoint) shareEntityEndpoint];
-    if (![command hasExtension:shareEntityEndpointDescriptor])
+    if (![self.command hasExtension:shareEntityEndpointDescriptor])
         return %orig;
-    YTIShareEntityEndpoint *shareEntityEndpoint = [command getExtension:shareEntityEndpointDescriptor];
-    if(!shareEntityEndpoint.hasSerializedShareEntity)
+    YTIShareEntityEndpoint *shareEntityEndpoint = [self.command getExtension:shareEntityEndpointDescriptor];
+    if (!shareEntityEndpoint.hasSerializedShareEntity)
         return %orig;
     if (!showNativeShareSheet(shareEntityEndpoint.serializedShareEntity))
         return %orig;
-    return TRUE;
 }
 %end
 

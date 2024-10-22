@@ -17,7 +17,7 @@ jobs:
     name: Update submodules
     runs-on: ubuntu-latest
     env:
-      PARENT_REPOSITORY: 'cameren2k/uYouPlus'
+      PARENT_REPOSITORY: 'cameren2k/youtube-native-share'
       CHECKOUT_BRANCH: 'main'
       PR_AGAINST_BRANCH: 'main'
       OWNER: 'cameren2k'

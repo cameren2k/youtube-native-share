@@ -7,7 +7,7 @@ include $(THEOS)/makefiles/common.mk
 TWEAK_NAME = YouTubeNativeShare
 
 YouTubeNativeShare_FILES = Tweak.x
-YouTubeNativeShare_CFLAGS = -fobjc-arc
+YouTubeNativeShare_CFLAGS = -fobjc-arc -Wl
 
 include $(THEOS_MAKE_PATH)/tweak.mk
 
